@@ -1,0 +1,19 @@
+{{- if .Values.configMap.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "myapp.fullname" . }}
+  labels:
+    {{- include "myapp.labels" . | nindent 4 }}
+data:
+  {{- range $key, $value := .Values.configMap.data }}
+  {{ $key }}: |
+{{ $value | indent 4 }}
+  {{- end }}
+  environment: {{ .Values.env.ENVIRONMENT | quote }}
+  release-name: {{ .Release.Name | quote }}
+  {{- if .Values.features.monitoring }}
+  monitoring.enabled: "true"
+  {{- end }}
+  enabled-features: {{ include "myapp.enabledFeatures" . | quote }}
+{{- end }}

@@ -1,0 +1,153 @@
+{{/* DEPLOYMENT - Demonstrates ALL Helm features */}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "myapp.fullname" . }}
+  labels:
+    {{- include "myapp.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "myapp.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "myapp.labels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "myapp.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      
+      {{- if .Values.initContainers }}
+      initContainers:
+        {{- toYaml .Values.initContainers | nindent 8 }}
+      {{- end }}
+      
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ include "myapp.imagePullPolicy" . }}
+          ports:
+            {{- include "myapp.containerPorts" . | nindent 12 }}
+          
+          {{- if .Values.livenessProbe.enabled }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.livenessProbe.httpGet.path }}
+              port: {{ .Values.livenessProbe.httpGet.port }}
+            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+          {{- end }}
+          
+          {{- if .Values.readinessProbe.enabled }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.readinessProbe.httpGet.path }}
+              port: {{ .Values.readinessProbe.httpGet.port }}
+            initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+          {{- end }}
+          
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          
+          env:
+            {{- include "myapp.envVars" . | nindent 12 }}
+            
+            {{- range .Values.extraEnvVars }}
+            - name: {{ .name }}
+              {{- if .value }}
+              value: {{ .value | quote }}
+              {{- else if .valueFrom }}
+              valueFrom:
+                {{- toYaml .valueFrom | nindent 16 }}
+              {{- end }}
+            {{- end }}
+            
+            {{- if .Values.features.monitoring }}
+            - name: MONITORING_ENABLED
+              value: "true"
+            {{- end }}
+            
+            {{- if .Values.features.tracing }}
+            - name: TRACING_ENABLED
+              value: "true"
+            {{- end }}
+            
+            - name: ENABLED_FEATURES
+              value: {{ include "myapp.enabledFeatures" . | quote }}
+            - name: RELEASE_NAME
+              value: {{ .Release.Name | quote }}
+          
+          {{- if or .Values.configMap.enabled .Values.secret.enabled .Values.persistence.enabled }}
+          volumeMounts:
+            {{- if .Values.configMap.enabled }}
+            - name: config
+              mountPath: /etc/config
+              readOnly: true
+            {{- end }}
+            {{- if .Values.secret.enabled }}
+            - name: secret
+              mountPath: /etc/secret
+              readOnly: true
+            {{- end }}
+            {{- if .Values.persistence.enabled }}
+            - name: data
+              mountPath: {{ .Values.persistence.mountPath }}
+            {{- end }}
+          {{- end }}
+        
+        {{- range .Values.sidecars }}
+        - name: {{ .name }}
+          image: {{ .image }}
+          {{- with .volumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+        {{- end }}
+      
+      {{- if or .Values.configMap.enabled .Values.secret.enabled .Values.persistence.enabled }}
+      volumes:
+        {{- if .Values.configMap.enabled }}
+        - name: config
+          configMap:
+            name: {{ include "myapp.fullname" . }}
+        {{- end }}
+        {{- if .Values.secret.enabled }}
+        - name: secret
+          secret:
+            secretName: {{ include "myapp.fullname" . }}
+        {{- end }}
+        {{- if .Values.persistence.enabled }}
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "myapp.fullname" . }}
+        {{- end }}
+      {{- end }}
+      
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

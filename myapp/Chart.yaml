@@ -1,0 +1,11 @@
+apiVersion: v2
+name: myapp
+description: Comprehensive Helm chart demonstrating all features
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - learning
+  - demo
+maintainers:
+  - name: DevOps Team

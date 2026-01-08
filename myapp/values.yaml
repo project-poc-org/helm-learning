@@ -1,0 +1,157 @@
+# COMPREHENSIVE VALUES FILE - Base configuration
+# Override per environment with values-dev/staging/prod.yaml
+
+replicaCount: 2
+
+image:
+  repository: nginx
+  pullPolicy: IfNotPresent
+  tag: "1.25-alpine"
+
+imagePullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "9090"
+
+podLabels:
+  environment: "default"
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 2000
+
+securityContext:
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+
+service:
+  enabled: true
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+  nodePort: null
+  annotations: {}
+
+ingress:
+  enabled: false
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hosts:
+    - host: myapp.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: myapp-tls
+      hosts:
+        - myapp.example.com
+
+resources:
+  limits:
+    cpu: 200m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+
+persistence:
+  enabled: false
+  storageClass: ""
+  accessMode: ReadWriteOnce
+  size: 1Gi
+  mountPath: /data
+
+livenessProbe:
+  enabled: true
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 30
+  periodSeconds: 10
+
+readinessProbe:
+  enabled: true
+  httpGet:
+    path: /ready
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 5
+
+# Environment variables (simple key-value)
+env:
+  APP_NAME: "myapp"
+  LOG_LEVEL: "info"
+  ENVIRONMENT: "default"
+
+# Additional env vars (demonstrates loops)
+extraEnvVars: []
+# - name: CUSTOM_VAR
+#   value: "custom-value"
+
+configMap:
+  enabled: true
+  data:
+    app.properties: |
+      app.name=MyApp
+      app.debug=false
+
+secret:
+  enabled: true
+  type: Opaque
+  data:
+    db-password: "cGFzc3dvcmQxMjM="
+
+initContainers: []
+# - name: init-db
+#   image: busybox
+#   command: ['sh', '-c', 'echo init']
+
+sidecars: []
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+networkPolicy:
+  enabled: false
+  ingress:
+    - from:
+      - namespaceSelector: {}
+
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+
+# Feature flags (demonstrates conditionals)
+features:
+  monitoring: true
+  tracing: false
+  caching: false
+
+externalServices:
+  database:
+    host: "postgres.default.svc.cluster.local"
+    port: 5432

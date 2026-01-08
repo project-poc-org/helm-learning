@@ -1,0 +1,58 @@
+# Production environment overrides
+replicaCount: 3
+image:
+  tag: "1.25-alpine"
+  pullPolicy: IfNotPresent
+podLabels:
+  environment: "production"
+env:
+  APP_NAME: "myapp"
+  LOG_LEVEL: "warn"
+  ENVIRONMENT: "production"
+extraEnvVars:
+  - name: DEBUG_MODE
+    value: "false"
+  - name: CACHE_ENABLED
+    value: "true"
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+ingress:
+  enabled: true
+  hosts:
+    - host: myapp.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: myapp-prod-tls
+      hosts:
+        - myapp.example.com
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+persistence:
+  enabled: true
+  size: 20Gi
+features:
+  monitoring: true
+  tracing: true
+  caching: true
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 100
+      podAffinityTerm:
+        labelSelector:
+          matchExpressions:
+          - key: app.kubernetes.io/name
+            operator: In
+            values:
+            - myapp
+        topologyKey: kubernetes.io/hostname

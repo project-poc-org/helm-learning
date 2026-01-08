@@ -1,0 +1,33 @@
+# Development environment overrides
+replicaCount: 1
+image:
+  tag: "latest"
+  pullPolicy: Always
+podLabels:
+  environment: "development"
+env:
+  APP_NAME: "myapp-dev"
+  LOG_LEVEL: "debug"
+  ENVIRONMENT: "development"
+extraEnvVars:
+  - name: DEBUG_MODE
+    value: "true"
+resources:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 50m
+    memory: 64Mi
+ingress:
+  enabled: true
+  hosts:
+    - host: myapp-dev.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+features:
+  monitoring: true
+  tracing: true
+  caching: false
